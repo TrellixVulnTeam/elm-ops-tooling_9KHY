@@ -191,6 +191,8 @@ def update_elm_package(vendor_dir, configs, packages):
         source_directories = data['source-directories']
         path = '../' * config.count('/')
 
+        needs_save = False
+
         for package in packages:
             current_package_dirs = get_source_dirs(vendor_dir, package)
 
@@ -199,9 +201,11 @@ def update_elm_package(vendor_dir, configs, packages):
 
                 if relative_path not in data['source-directories']:
                     data['source-directories'].append(relative_path)
+                    needs_save = True
 
-        with open(config, 'w') as f:
-            f.write(json.dumps(data, indent=4))
+        if needs_save:
+            with open(config, 'w') as f:
+                f.write(json.dumps(data, indent=4))
 
     return repository
 
