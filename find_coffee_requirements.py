@@ -60,8 +60,8 @@ def main():
 
     # example 'app/assets/javascripts/teach/course-creation-component.js.coffee'
     parser.add_argument('filename', help='The file to use for starting the requirement search')
+    parser.add_argument('--asset-dir', dest='asset_dir', const='./', default='./', action='store', nargs='?', help='Asset dir to look into')
     args = parser.parse_args()
-    parser.add_argument('--asset_dir', help='Asset dir to look into', default='./')
 
     (requirement_filenames, missing_filenames) = get_requirement_filenames(args.asset_dir, args.filename)
 
