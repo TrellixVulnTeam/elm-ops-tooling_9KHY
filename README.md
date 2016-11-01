@@ -26,7 +26,7 @@ It will:
 - replace packages if they have been renamed (evancz/elm-http to elm-lang/http for example)
 
 ```
-python update_elm_package.py ../upgrades/elm-lazy-list
+python update_018_elm_package.py ../upgrades/elm-lazy-list
 ```
 
 will upgrade the package in that directory.
