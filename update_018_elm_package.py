@@ -21,7 +21,7 @@ def upgrade_elm_version(version):
     return "0.18.0 <= v < 0.19.0"
 
 def new_packages():
-    r = requests.get("http://package.elm-lang.org/new-packages")
+    r = requests.get("http://package.elm-lang.org:8018/new-packages")
     return r.json()
 
 def update_elm_package(root_folder, dry=False):
@@ -86,7 +86,7 @@ def update_elm_package(root_folder, dry=False):
     print('=======================')
     print('Warnings: ')
     print('\n'.join(errors))
-
+b
     print('========================\n\n')
     print(json.dumps(package_data, sort_keys=False, indent=4))
 
