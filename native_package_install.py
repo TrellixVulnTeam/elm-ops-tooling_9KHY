@@ -126,7 +126,7 @@ def namespace_from_repo(repository):
     ['NoRedInk', 'noredink']
     """
 
-    repo_without_domain = repository.lstrip('https://github.com/').rstrip('.git')
+    repo_without_domain = repository.split('https://github.com/')[1].split('.git')[0]
 
     (namespace, name) = repo_without_domain.split('/')
     return [namespace, name]
