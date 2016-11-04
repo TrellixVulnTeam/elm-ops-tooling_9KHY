@@ -16,7 +16,7 @@ def sync_versions(top_level_file, spec_file, quiet=False, dry=False, note_test_d
         top_level = json.load(f)
 
     with open(spec_file) as f:
-        spec = json.load(f)
+        spec = json.load(f, object_pairs_hook=OrderedDict)
 
     messages = []
 
