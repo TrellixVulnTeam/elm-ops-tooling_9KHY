@@ -61,9 +61,9 @@ def test_spec_order_is_preserved(
         note_test_deps=True)
 
     new_spec = json.loads(spec_file.read(), object_pairs_hook=OrderedDict)
-    assert new_spec.keys() == spec_keys + ['test-dependencies']
-    assert new_spec['dependencies'].keys() == ['NoRedInk/spec-1', 'NoRedInk/spec-2', 'NoRedInk/top-1', 'NoRedInk/top-2', 'NoRedInk/top-3']
-    assert new_spec['test-dependencies'].keys() == ['NoRedInk/spec-1', 'NoRedInk/spec-2']
+    assert list(new_spec.keys()) == spec_keys + ['test-dependencies']
+    assert list(new_spec['dependencies'].keys()) == ['NoRedInk/spec-1', 'NoRedInk/spec-2', 'NoRedInk/top-1', 'NoRedInk/top-2', 'NoRedInk/top-3']
+    assert list(new_spec['test-dependencies'].keys()) == ['NoRedInk/spec-1', 'NoRedInk/spec-2']
 
 
 def _make_package(keys, deps):
