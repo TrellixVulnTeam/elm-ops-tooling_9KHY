@@ -50,7 +50,7 @@ def sync_versions(top_level_file, spec_file, quiet=False, dry=False, note_test_d
         if not dry:
             spec['dependencies'] = sorted_deps(spec['dependencies'])
             with open(spec_file, 'w') as f:
-                json.dump(spec, f, sort_keys=False, indent=4)
+                json.dump(spec, f, sort_keys=False, indent=4, separators=(',', ': '))
         else:
             print("No changes written.")
 
