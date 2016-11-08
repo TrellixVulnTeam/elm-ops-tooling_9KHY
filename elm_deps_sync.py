@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import sys
+from collections import OrderedDict
 import json
 import argparse
 
@@ -15,7 +16,7 @@ def sync_versions(top_level_file, spec_file, quiet=False, dry=False, note_test_d
         top_level = json.load(f)
 
     with open(spec_file) as f:
-        spec = json.load(f)
+        spec = json.load(f, object_pairs_hook=OrderedDict)
 
     messages = []
 
@@ -41,12 +42,13 @@ def sync_versions(top_level_file, spec_file, quiet=False, dry=False, note_test_d
             test_deps[package_name] = package_version
 
     if note_test_deps:
-        spec['test-dependencies'] = test_deps
+        spec['test-dependencies'] = sorted_deps(test_deps)
 
     if len(messages) > 0 or note_test_deps:
         print('{number} packages changed.'.format(number=len(messages)))
 
         if not dry:
+            spec['dependencies'] = sorted_deps(spec['dependencies'])
             with open(spec_file, 'w') as f:
                 json.dump(spec, f, sort_keys=False, indent=4)
         else:
@@ -56,6 +58,10 @@ def sync_versions(top_level_file, spec_file, quiet=False, dry=False, note_test_d
             print('\n'.join(messages))
     else:
         print('No changes needed.')
+
+
+def sorted_deps(deps):
+    return OrderedDict(sorted(deps.items()))
 
 
 def main():
