@@ -114,7 +114,7 @@ def upgrade_elm_files(root_folder):
 def run_elm_format(root_folder):
     from subprocess import call
     os.chdir(root_folder)
-    call(["elm-format", "--version=0.18"])
+    call(["elm-format", ".", "--upgrade", "--yes", "--elm-version=0.18"])
 
 
 def run_elm_make(root_folder):
