@@ -92,6 +92,8 @@ def find_newer_versions(local_deps, remote_deps):
     upgrade_suggestions = {}
 
     for (dep, version) in local_deps.items():
+        if dep not in remote_deps:
+            continue
         current_version = top_range(version)
         patches = get_patch_upgrades(current_version, remote_deps[dep]['versions'])
         minors = get_minor_upgrades(current_version, remote_deps[dep]['versions'])
