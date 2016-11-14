@@ -133,10 +133,12 @@ def main():
     parser.add_argument('package_dir')
     args = parser.parse_args()
 
-    update_elm_package(args.package_dir, dry=args.dry)
-    upgrade_elm_files(args.package_dir)
-    run_elm_make(args.package_dir)
-    run_elm_format(args.package_dir)
+    package_dir = os.path.realpath(args.package_dir)
+
+    update_elm_package(package_dir, dry=args.dry)
+    upgrade_elm_files(package_dir)
+    run_elm_make(package_dir)
+    run_elm_format(package_dir)
 
 
 if __name__ == '__main__':
