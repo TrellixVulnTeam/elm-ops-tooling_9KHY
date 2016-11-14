@@ -28,12 +28,12 @@ def sync_versions(top_level_file, spec_file, quiet=False, dry=False, note_test_d
                 package_name=package_name, spec_file=spec_file, package_version=package_version)
             )
         elif spec['dependencies'][package_name] != package_version:
-            spec['dependencies'][package_name] = package_version
-
             messages.append('Changing {package_name} from version {package_version} to {other_package_version}'.format(
                     package_version=package_version, package_name=package_name,
                     other_package_version=spec['dependencies'][package_name])
-                )
+            )
+
+            spec['dependencies'][package_name] = package_version
 
     test_deps = {}
 
