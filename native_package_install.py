@@ -35,8 +35,9 @@ def format_tarball_url(package):
 def packages_from_exact_deps(exact_dependencies):
     """
     Parses the json and returns a list of {version, user, project}.
-    >>> packages_from_exact_deps({'elm-lang/navigation': '2.0.0'})
-    [{'version': '2.0.0', 'user': 'elm-lang', 'project': 'navigation'}]
+    >>> packages_from_exact_deps({'elm-lang/navigation': '2.0.0'}) \
+        == [{'version': '2.0.0', 'user': 'elm-lang', 'project': 'navigation'}]
+    True
     """
     result = []
 
@@ -127,7 +128,7 @@ def package_name_from_repo(repository):
     """
     User and project from repository.
     >>> package_name_from_repo('https://github.com/NoRedInk/noredink.git')
-    ['NoRedInk', 'noredink']
+    ('NoRedInk', 'noredink')
     """
 
     repo_without_domain = repository.split('https://github.com/')[1].split('.git')[0]

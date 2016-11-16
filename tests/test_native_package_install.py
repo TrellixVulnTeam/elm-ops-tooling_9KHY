@@ -100,7 +100,7 @@ def test_update_source_directories_makes_minimum_changes(tmpdir):
     assert set(new_elm_package_one['source-directories']) == set(('.', str(src_dir), str(src2_dir)))
 
     new_elm_package_two = json.loads(elm_package_two_path.read())
-    assert set(new_elm_package_two['source-directories']) == set(('.', str(src_dir), str(src2_dir)))
+    assert set(new_elm_package_two['source-directories']) == set(('src', str(src_dir), str(src2_dir)))
 
     for diff in difflib.ndiff(prev_lines, elm_package_one_path.read().splitlines()):
         if diff.startswith('  '):
