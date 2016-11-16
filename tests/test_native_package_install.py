@@ -1,6 +1,5 @@
 import json
 import tarfile
-import urllib2
 import difflib
 
 import native_package_install
@@ -36,7 +35,7 @@ def test_main_does_not_download_twice(tmpdir, mocker):
 
     vendor = tmpdir.mkdir('vendor')
 
-    urlopen = mocker.patch.object(urllib2, 'urlopen')
+    urlopen = mocker.patch.object(native_package_install, 'urlopen')
     with open(str(fake_native_tarball_path)) as f:
         urlopen.return_value = f
 

@@ -8,7 +8,12 @@ import fnmatch
 import os
 import sys
 import tarfile
-import urllib2
+try:
+    # For Python 3.0 and later
+    from urllib.request import urlopen
+except ImportError:
+    # Fall back to Python 2's urllib2
+    from urllib2 import urlopen
 
 import elm_package
 import exact_dependencies
@@ -92,7 +97,7 @@ def fetch_packages(vendor_dir, packages):
         url = format_tarball_url(package)
 
         print("Downloading {user}/{project} {version}".format(**package))
-        tar_file = urllib2.urlopen(url)
+        tar_file = urlopen(url)
         with open(tar_filename, 'w') as tar:
             tar.write(tar_file.read())
 
