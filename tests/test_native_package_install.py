@@ -72,7 +72,7 @@ def test_update_source_directories_makes_minimum_changes(tmpdir):
         'dependencies': {},
     }, indent=4, separators=(',', ': ')))
 
-    native_packages = [{'user': 'elm-lang', 'project': 'core', 'version': '1.0.0'}]
+    native_packages = [{'owner': 'elm-lang', 'project': 'core', 'version': '1.0.0'}]
     vendor_package_dir = vendor_dir.mkdir('elm-lang').mkdir('core-1.0.0')
     fake_elm_package = vendor_package_dir.join('elm-package.json')
     fake_elm_package.write(json.dumps({

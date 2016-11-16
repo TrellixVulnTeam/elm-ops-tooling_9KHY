@@ -31,25 +31,25 @@ def read_native_elm_package(package_file):
 def format_tarball_url(package):
     """
     Creates the url to fetch the tar from github.
-    >>> format_tarball_url({'user': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
+    >>> format_tarball_url({'owner': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
     'https://github.com/elm-lang/navigation/archive/2.0.0.tar.gz'
     """
-    return "https://github.com/{user}/{project}/archive/{version}.tar.gz".format(**package)
+    return "https://github.com/{owner}/{project}/archive/{version}.tar.gz".format(**package)
 
 
 def packages_from_exact_deps(exact_dependencies):
     """
-    Parses the json and returns a list of {version, user, project}.
+    Parses the json and returns a list of {version, owner, project}.
     >>> packages_from_exact_deps({'elm-lang/navigation': '2.0.0'}) \
-        == [{'version': '2.0.0', 'user': 'elm-lang', 'project': 'navigation'}]
+        == [{'version': '2.0.0', 'owner': 'elm-lang', 'project': 'navigation'}]
     True
     """
     result = []
 
     for package, version in exact_dependencies.items():
-        user, project = package.split('/')
+        owner, project = package.split('/')
         result.append({
-          'user': user,
+          'owner': owner,
           'project': project,
           'version': version
         })
@@ -57,13 +57,13 @@ def packages_from_exact_deps(exact_dependencies):
     return result
 
 
-def ensure_vendor_user_dir(base, user):
+def ensure_vendor_owner_dir(base, owner):
     """
     Creates the path in the vendor folder.
-    >>> ensure_vendor_user_dir('foo', 'bar')
+    >>> ensure_vendor_owner_dir('foo', 'bar')
     'foo/bar'
     """
-    path = os.path.join(base, user)
+    path = os.path.join(base, owner)
 
     try:
         os.makedirs(path)
@@ -76,12 +76,12 @@ def ensure_vendor_user_dir(base, user):
 def vendor_package_dir(vendor_dir, package):
     """
     Returns the path to the elm package. Also creates the parent directory if misisng.
-    >>> vendor_package_dir('vendor/assets/elm', {'version': '2.0.0', 'user': 'elm-lang', 'project': 'navigation'})
+    >>> vendor_package_dir('vendor/assets/elm', {'version': '2.0.0', 'owner': 'elm-lang', 'project': 'navigation'})
     'vendor/assets/elm/elm-lang/navigation-2.0.0'
     """
-    vendor_user_dir = ensure_vendor_user_dir(vendor_dir, package['user'])
-    return "{vendor_user_dir}/{project}-{version}".format(
-        vendor_user_dir=vendor_user_dir,
+    vendor_owner_dir = ensure_vendor_owner_dir(vendor_dir, package['owner'])
+    return "{vendor_owner_dir}/{project}-{version}".format(
+        vendor_owner_dir=vendor_owner_dir,
         project=package['project'],
         version=package['version']
     )
@@ -93,16 +93,16 @@ def fetch_packages(vendor_dir, packages):
     """
     for package in packages:
         tar_filename = format_tar_path(vendor_dir, package)
-        vendor_user_dir = ensure_vendor_user_dir(vendor_dir, package['user'])
+        vendor_owner_dir = ensure_vendor_owner_dir(vendor_dir, package['owner'])
         url = format_tarball_url(package)
 
-        print("Downloading {user}/{project} {version}".format(**package))
+        print("Downloading {owner}/{project} {version}".format(**package))
         tar_file = urlopen(url)
         with open(tar_filename, 'w') as tar:
             tar.write(tar_file.read())
 
         with tarfile.open(tar_filename) as tar:
-            tar.extractall(vendor_user_dir, members=tar.getmembers())
+            tar.extractall(vendor_owner_dir, members=tar.getmembers())
 
     return packages
 
@@ -110,36 +110,36 @@ def fetch_packages(vendor_dir, packages):
 def format_tar_path(vendor_dir, package):
     """
     The path of the tar.
-    >>> format_tar_path('vendor/assets/elm', {'user': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
+    >>> format_tar_path('vendor/assets/elm', {'owner': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
     'vendor/assets/elm/elm-lang/navigation-2.0.0-tar.gz'
     """
-    ensure_vendor_user_dir(vendor_dir, package['user'])
+    ensure_vendor_owner_dir(vendor_dir, package['owner'])
     return vendor_package_dir(vendor_dir, package) + "-tar.gz"
 
 
-def format_native_name(user, project):
+def format_native_name(owner, project):
     """
-    Formates the package to the user used in elm native.
+    Formates the package to the owner used in elm native.
     >>> format_native_name('elm-lang', 'navigation')
     '_elm_lang$navigation'
     """
 
-    underscored_user = user.replace("-", "_")
+    underscored_owner = owner.replace("-", "_")
     underscored_project = project.replace("-", "_")
-    return "_{owner}${repo}".format(owner=underscored_user, repo=underscored_project)
+    return "_{owner}${repo}".format(owner=underscored_owner, repo=underscored_project)
 
 
 def package_name_from_repo(repository):
     """
-    User and project from repository.
+    Owner and project from repository.
     >>> package_name_from_repo('https://github.com/NoRedInk/noredink.git')
     ('NoRedInk', 'noredink')
     """
 
     repo_without_domain = repository.split('https://github.com/')[1].split('.git')[0]
 
-    (user, project) = repo_without_domain.split('/')
-    return (user, project)
+    (owner, project) = repo_without_domain.split('/')
+    return (owner, project)
 
 
 def get_source_dirs(vendor_dir, package):
@@ -175,14 +175,14 @@ def munge_names(vendor_dir, repository, packages):
     """
     Replaces the namespaced function names in all native code by the namespace from the given elm-package.json.
     """
-    user, project = package_name_from_repo(repository)
+    owner, project = package_name_from_repo(repository)
     for package in packages:
         native_files = find_all_native_files(vendor_package_dir(vendor_dir, package))
         for native_file in native_files:
             replace_in_file(
                 native_file,
-                format_native_name(package['user'], package['project']),
-                format_native_name(user, project)
+                format_native_name(package['owner'], package['project']),
+                format_native_name(owner, project)
             )
 
 
