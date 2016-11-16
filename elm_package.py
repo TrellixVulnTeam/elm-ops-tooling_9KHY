@@ -3,31 +3,31 @@
 Load and save elm-package.json safely.
 '''
 
+# from typing import Dict, Tuple, IO
 import copy
 from collections import OrderedDict
 import json
 
 
-# load(fileobj: Filelike) -> Dict
 def load(fileobj):
+    # type: (IO[str]) -> Dict
     return json.load(fileobj, object_pairs_hook=OrderedDict)
 
 
-# dump(package: Dict, fileobj: FileLike) -> None
 def dump(package, fileobj):
+    # type: (Dict, IO[str]) -> None
     to_save = copy.deepcopy(package)
     to_save['dependencies'] = sorted_deps(to_save['dependencies'])
     json.dump(to_save, fileobj, sort_keys=False, indent=4, separators=(',', ': '))
 
 
-# sorted_deps(deps: Dict) -> Dict
 def sorted_deps(deps):
+    # type: (Dict) -> Dict
     return OrderedDict(sorted(deps.items()))
 
 
-# Change = str
-# sync_deps(from_deps: Dict, to_deps: Dict) -> (List[Change], Dict)
 def sync_deps(from_deps, to_deps):
+    # type: (Dict, Dict) -> Tuple[List[str], Dict]
     messages = []
     result = copy.deepcopy(to_deps)
 

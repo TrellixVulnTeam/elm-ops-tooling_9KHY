@@ -10,6 +10,7 @@ package name and its exact version:
     }
 '''
 
+# from typing import Dict, IO
 import json
 
 import elm_package
@@ -18,7 +19,7 @@ import elm_package
 load = elm_package.load
 
 
-# dump(package: Dict, fileobj: FileLike) -> None
 def dump(package, fileobj):
+    # type: (Dict, IO[str]) -> None
     to_save = elm_package.sorted_deps(package)
     json.dump(to_save, fileobj, sort_keys=False, indent=4, separators=(',', ': '))
