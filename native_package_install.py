@@ -178,35 +178,36 @@ def munge_names(vendor_dir, repository, packages):
             )
 
 
-def update_elm_package(vendor_dir, configs, packages):
+def update_source_directories(vendor_dir, elm_package_paths, native_packages):
     """
-    Gets the repo name and updates the source-directories in the given elm-package.json.
+    Updates the source-directories in the given elm-package.json files.
+    Returns the repository of the last elm-package.json.
     """
 
     repository = ""
 
-    for config in configs:
-        with open(config) as f:
+    for elm_package_path in elm_package_paths:
+        with open(elm_package_path) as f:
             data = json.load(f, object_pairs_hook=collections.OrderedDict)
 
         repository = data['repository']
         source_directories = data['source-directories']
-        path = '../' * config.count('/')
+        path = '../' * elm_package_path.count('/')
 
         needs_save = False
 
-        for package in packages:
-            current_package_dirs = get_source_dirs(vendor_dir, package)
+        for native_package in native_packages:
+            source_dirs = get_source_dirs(vendor_dir, native_package)
 
-            for dir_name in current_package_dirs:
-                relative_path = os.path.join(path, vendor_package_dir(vendor_dir, package), dir_name)
+            for source_dir in source_dirs:
+                relative_path = os.path.join(path, vendor_package_dir(vendor_dir, native_package), source_dir)
 
                 if relative_path not in data['source-directories']:
                     data['source-directories'].append(relative_path)
                     needs_save = True
 
         if needs_save:
-            with open(config, 'w') as f:
+            with open(elm_package_path, 'w') as f:
                 f.write(json.dumps(data, indent=4))
 
     return repository
@@ -216,12 +217,12 @@ def exclude_downloaded_packages(vendor_dir, packages):
   return [x for x in packages if not os.path.isfile(format_tar_path(vendor_dir, x))]
 
 
-def main(native_elm_package, configs, vendor_dir):
-    raw_json = read_native_elm_package(native_elm_package)
+def main(native_elm_package_path, elm_package_paths, vendor_dir):
+    raw_json = read_native_elm_package(native_elm_package_path)
     all_packages = packages_from_exact_deps(raw_json)
     required_packages = exclude_downloaded_packages(vendor_dir, all_packages)
     fetch_packages(vendor_dir, required_packages)
-    repository = update_elm_package(vendor_dir, configs, required_packages)
+    repository = update_source_directories(vendor_dir, elm_package_paths, required_packages)
     munge_names(vendor_dir, repository, required_packages)
 
 
