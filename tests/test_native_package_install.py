@@ -6,7 +6,7 @@ import native_package_install
 
 
 
-def test_main(tmpdir, mocker):
+def test_main_does_not_download_twice(tmpdir, mocker):
     native_elm_package = {'elm-lang/core': '1.0.0'}
     native_elm_package_path = tmpdir.join('elm-native-package.json')
     native_elm_package_path.write(json.dumps(native_elm_package))
@@ -43,5 +43,12 @@ def test_main(tmpdir, mocker):
             list(map(str, (elm_package_one_path, elm_package_two_path))),
             str(vendor))
 
-        # mvp is to test that main runs without raising an exception;
-        # not asserting anything for now
+    with open(str(fake_native_tarball_path)) as f:
+        urlopen.return_value = f
+
+        native_package_install.main(
+            str(native_elm_package_path),
+            list(map(str, (elm_package_one_path, elm_package_two_path))),
+            str(vendor))
+
+    assert urlopen.call_count == 1

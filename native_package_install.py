@@ -213,7 +213,7 @@ def update_elm_package(vendor_dir, configs, packages):
 
 
 def exclude_downloaded_packages(vendor_dir, packages):
-  return [x for x in packages if not os.path.isdir(format_tar_path(vendor_dir, x))]
+  return [x for x in packages if not os.path.isfile(format_tar_path(vendor_dir, x))]
 
 
 def main(native_elm_package, configs, vendor_dir):
