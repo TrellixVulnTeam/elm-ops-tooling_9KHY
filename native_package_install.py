@@ -21,10 +21,10 @@ def read_native_elm_package(package_file):
         return json.load(f)
 
 
-def format_url(package):
+def format_tarball_url(package):
     """
     Creates the url to fetch the tar from github.
-    >>> format_url({'user': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
+    >>> format_tarball_url({'user': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
     'https://github.com/elm-lang/navigation/archive/2.0.0.tar.gz'
     """
     return "https://github.com/{user}/{project}/archive/{version}.tar.gz".format(**package)
@@ -49,10 +49,10 @@ def packages_from_exact_deps(exact_dependencies):
     return result
 
 
-def format_vendor_dir(base, user):
+def ensure_vendor_user_dir(base, user):
     """
     Creates the path in the vendor folder.
-    >>> format_vendor_dir('foo', 'bar')
+    >>> ensure_vendor_user_dir('foo', 'bar')
     'foo/bar'
     """
     path = os.path.join(base, user)
@@ -65,15 +65,16 @@ def format_vendor_dir(base, user):
     return path
 
 
-def package_dir(vendor_dir, package):
+def vendor_package_dir(vendor_dir, package):
     """
-    Creates the path to the elm package.
-    >>> package_dir('vendor/assets/elm', {'version': '2.0.0', 'user': 'elm-lang', 'project': 'navigation'})
+    Returns the path to the elm package. Also creates the parent directory if misisng.
+    >>> vendor_package_dir('vendor/assets/elm', {'version': '2.0.0', 'user': 'elm-lang', 'project': 'navigation'})
     'vendor/assets/elm/elm-lang/navigation-2.0.0'
     """
-    return "{vendor_dir}/{package_name}-{version}".format(
-        vendor_dir=format_vendor_dir(vendor_dir, package['user']),
-        package_name=package['project'],
+    vendor_user_dir = ensure_vendor_user_dir(vendor_dir, package['user'])
+    return "{vendor_user_dir}/{project}-{version}".format(
+        vendor_user_dir=vendor_user_dir,
+        project=package['project'],
         version=package['version']
     )
 
@@ -83,9 +84,9 @@ def fetch_packages(vendor_dir, packages):
     Fetches all packages from github.
     """
     for package in packages:
-        tar_filename = format_tar_file(vendor_dir, package)
-        vendor = format_vendor_dir(vendor_dir, package['user'])
-        url = format_url(package)
+        tar_filename = format_tar_path(vendor_dir, package)
+        vendor_user_dir = ensure_vendor_user_dir(vendor_dir, package['user'])
+        url = format_tarball_url(package)
 
         print("Downloading {user}/{project} {version}".format(**package))
         tar_file = urllib2.urlopen(url)
@@ -93,19 +94,20 @@ def fetch_packages(vendor_dir, packages):
             tar.write(tar_file.read())
 
         with tarfile.open(tar_filename) as tar:
-            tar.extractall(vendor, members=tar.getmembers())
+            tar.extractall(vendor_user_dir, members=tar.getmembers())
 
     return packages
 
 
-def format_tar_file(vendor_dir, package):
+def format_tar_path(vendor_dir, package):
     """
-    The name of the tar.
-    >>> format_tar_file('vendor/assets/elm', {'user': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
+    The path of the tar.
+    >>> format_tar_path('vendor/assets/elm', {'user': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
     'vendor/assets/elm/elm-lang/navigation-2.0.0-tar.gz'
     """
-    vendor = format_vendor_dir(vendor_dir, package['user'])
-    return package_dir(vendor_dir, package) + "-tar.gz"
+    ensure_vendor_user_dir(vendor_dir, package['user'])
+    return vendor_package_dir(vendor_dir, package) + "-tar.gz"
+
 
 def format_native_name(user, project):
     """
@@ -134,7 +136,7 @@ def package_name_from_repo(repository):
 
 def get_source_dirs(vendor_dir, package):
     """ get the source-directories out of an elm-package file """
-    elm_package_filename = os.path.join(package_dir(vendor_dir, package), 'elm-package.json')
+    elm_package_filename = os.path.join(vendor_package_dir(vendor_dir, package), 'elm-package.json')
     with open(elm_package_filename) as f:
         data = json.load(f)
 
@@ -167,7 +169,7 @@ def munge_names(vendor_dir, repository, packages):
     """
     user, project = package_name_from_repo(repository)
     for package in packages:
-        native_files = find_all_native_files(package_dir(vendor_dir, package))
+        native_files = find_all_native_files(vendor_package_dir(vendor_dir, package))
         for native_file in native_files:
             replace_in_file(
                 native_file,
@@ -197,7 +199,7 @@ def update_elm_package(vendor_dir, configs, packages):
             current_package_dirs = get_source_dirs(vendor_dir, package)
 
             for dir_name in current_package_dirs:
-                relative_path = os.path.join(path, package_dir(vendor_dir, package), dir_name)
+                relative_path = os.path.join(path, vendor_package_dir(vendor_dir, package), dir_name)
 
                 if relative_path not in data['source-directories']:
                     data['source-directories'].append(relative_path)
@@ -210,17 +212,17 @@ def update_elm_package(vendor_dir, configs, packages):
     return repository
 
 
-def filter_packages(vendor_dir, packages):
-  return [x for x in packages if not os.path.isdir(format_tar_file(vendor_dir, x))]
+def exclude_downloaded_packages(vendor_dir, packages):
+  return [x for x in packages if not os.path.isdir(format_tar_path(vendor_dir, x))]
 
 
-def main(native_elm_package, configs, vendor):
+def main(native_elm_package, configs, vendor_dir):
     raw_json = read_native_elm_package(native_elm_package)
-    parsed = packages_from_exact_deps(raw_json)
-    packages = filter_packages(vendor, parsed)
-    fetch_packages(vendor, packages)
-    repository = update_elm_package(vendor, configs, packages)
-    munge_names(vendor, repository, packages)
+    all_packages = packages_from_exact_deps(raw_json)
+    required_packages = exclude_downloaded_packages(vendor_dir, all_packages)
+    fetch_packages(vendor_dir, required_packages)
+    repository = update_elm_package(vendor_dir, configs, required_packages)
+    munge_names(vendor_dir, repository, required_packages)
 
 
 def test():
