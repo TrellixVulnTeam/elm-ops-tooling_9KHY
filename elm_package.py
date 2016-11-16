@@ -1,7 +1,7 @@
 #! /usr/bin/env python
-'''
+"""
 Load and save elm-package.json safely.
-'''
+"""
 
 # from typing import Dict, Tuple, IO
 import copy

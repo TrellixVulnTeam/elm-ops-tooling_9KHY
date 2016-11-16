@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-'''
+"""
 Load and save exact-dependencies.json safely.
 
 The format of exact-dependencies is simply a dictionary of
@@ -8,7 +8,7 @@ package name and its exact version:
     {
         "elm-lang/core": "4.0.5"
     }
-'''
+"""
 
 # from typing import Dict, IO
 import json
