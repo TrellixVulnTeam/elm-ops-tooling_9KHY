@@ -1,9 +1,9 @@
 import json
 import tarfile
 import urllib2
+import difflib
 
 import native_package_install
-
 
 
 def test_main_does_not_download_twice(tmpdir, mocker):
@@ -24,12 +24,14 @@ def test_main_does_not_download_twice(tmpdir, mocker):
     elm_package_one_path.write(json.dumps({
         'repository': 'https://github.com/NoRedInk/elm-ops-tooling.git',
         'source-directories': ['.'],
+        'dependencies': {},
     }))
 
     elm_package_two_path = tmpdir.join('elm-package-two.json')
     elm_package_two_path.write(json.dumps({
         'repository': 'https://github.com/NoRedInk/elm-ops-tooling-two.git',
         'source-directories': ['src'],
+        'dependencies': {},
     }))
 
     vendor = tmpdir.mkdir('vendor')
@@ -52,3 +54,66 @@ def test_main_does_not_download_twice(tmpdir, mocker):
             str(vendor))
 
     assert urlopen.call_count == 1
+
+
+def test_update_source_directories_makes_minimum_changes(tmpdir):
+    vendor_dir = tmpdir.mkdir('vendor')
+
+    elm_package_one_path = tmpdir.join('elm-package-one.json')
+    elm_package_one_path.write(json.dumps({
+        'repository': 'https://github.com/NoRedInk/elm-ops-tooling.git',
+        'source-directories': ['.'],
+        'dependencies': {},
+    }, indent=4, separators=(',', ': ')))
+
+    elm_package_two_path = tmpdir.join('elm-package-two.json')
+    elm_package_two_path.write(json.dumps({
+        'repository': 'https://github.com/NoRedInk/elm-ops-tooling-two.git',
+        'source-directories': ['src'],
+        'dependencies': {},
+    }, indent=4, separators=(',', ': ')))
+
+    native_packages = [{'user': 'elm-lang', 'project': 'core', 'version': '1.0.0'}]
+    vendor_package_dir = vendor_dir.mkdir('elm-lang').mkdir('core-1.0.0')
+    fake_elm_package = vendor_package_dir.join('elm-package.json')
+    fake_elm_package.write(json.dumps({
+        'source-directories': ['src', 'src2'],
+    }))
+    src_dir = vendor_package_dir.join('src').relto(tmpdir)
+    src2_dir = vendor_package_dir.join('src2').relto(tmpdir)
+
+    prev_lines = elm_package_one_path.read().splitlines()
+
+    # sanity check: we're operating on a clean JSON
+    for line in prev_lines:
+        assert not line.endswith(' ')
+
+    repo = native_package_install.update_source_directories(
+        str(vendor_dir),
+        list(map(str, (elm_package_one_path, elm_package_two_path))),
+        native_packages,
+    )
+
+    assert repo == 'https://github.com/NoRedInk/elm-ops-tooling-two.git'
+
+    new_elm_package_one = json.loads(elm_package_one_path.read())
+    assert set(new_elm_package_one['source-directories']) == set(('.', str(src_dir), str(src2_dir)))
+
+    new_elm_package_two = json.loads(elm_package_two_path.read())
+    assert set(new_elm_package_two['source-directories']) == set(('.', str(src_dir), str(src2_dir)))
+
+    for diff in difflib.ndiff(prev_lines, elm_package_one_path.read().splitlines()):
+        if diff.startswith('  '):
+            continue
+
+        # assert there's only expected diffs
+        if diff.startswith('+ '):
+            # adds new src dir or trailing comma
+            assert ('"."' in diff) or (str(src_dir) in diff) or (str(src2_dir) in diff)
+        elif diff.startswith('- '):
+            # trailing comma for src dir
+            assert '"."' in diff
+        elif diff.startswith('? '):
+            pass
+        else:
+            assert False, 'unexpected diff operator in: ' + diff

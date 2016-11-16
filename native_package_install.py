@@ -5,11 +5,13 @@ from __future__ import print_function
 import argparse
 import collections
 import fnmatch
-import json
 import os
 import sys
 import tarfile
 import urllib2
+
+import elm_package
+import exact_dependencies
 
 
 def read_native_elm_package(package_file):
@@ -18,7 +20,7 @@ def read_native_elm_package(package_file):
     """
 
     with open(package_file) as f:
-        return json.load(f)
+        return exact_dependencies.load(f)
 
 
 def format_tarball_url(package):
@@ -138,7 +140,7 @@ def get_source_dirs(vendor_dir, package):
     """ get the source-directories out of an elm-package file """
     elm_package_filename = os.path.join(vendor_package_dir(vendor_dir, package), 'elm-package.json')
     with open(elm_package_filename) as f:
-        data = json.load(f)
+        data = elm_package.load(f)
 
     return data['source-directories']
 
@@ -188,11 +190,11 @@ def update_source_directories(vendor_dir, elm_package_paths, native_packages):
 
     for elm_package_path in elm_package_paths:
         with open(elm_package_path) as f:
-            data = json.load(f, object_pairs_hook=collections.OrderedDict)
+            data = elm_package.load(f)
 
         repository = data['repository']
         source_directories = data['source-directories']
-        path = '../' * elm_package_path.count('/')
+        elm_package_dir = os.path.dirname(elm_package_path)
 
         needs_save = False
 
@@ -200,7 +202,9 @@ def update_source_directories(vendor_dir, elm_package_paths, native_packages):
             source_dirs = get_source_dirs(vendor_dir, native_package)
 
             for source_dir in source_dirs:
-                relative_path = os.path.join(path, vendor_package_dir(vendor_dir, native_package), source_dir)
+                absolute_source_dir = os.path.join(
+                    vendor_package_dir(vendor_dir, native_package), source_dir)
+                relative_path = os.path.relpath(absolute_source_dir, elm_package_dir)
 
                 if relative_path not in data['source-directories']:
                     data['source-directories'].append(relative_path)
@@ -208,7 +212,7 @@ def update_source_directories(vendor_dir, elm_package_paths, native_packages):
 
         if needs_save:
             with open(elm_package_path, 'w') as f:
-                f.write(json.dumps(data, indent=4))
+                elm_package.dump(data, f)
 
     return repository
 
@@ -218,12 +222,16 @@ def exclude_downloaded_packages(vendor_dir, packages):
 
 
 def main(native_elm_package_path, elm_package_paths, vendor_dir):
+    absolute_vendor_dir = os.path.abspath(vendor_dir)
+    absolute_elm_package_paths = list(map(os.path.abspath, elm_package_paths))
+
     raw_json = read_native_elm_package(native_elm_package_path)
     all_packages = packages_from_exact_deps(raw_json)
-    required_packages = exclude_downloaded_packages(vendor_dir, all_packages)
-    fetch_packages(vendor_dir, required_packages)
-    repository = update_source_directories(vendor_dir, elm_package_paths, required_packages)
-    munge_names(vendor_dir, repository, required_packages)
+    required_packages = exclude_downloaded_packages(absolute_vendor_dir, all_packages)
+    fetch_packages(absolute_vendor_dir, required_packages)
+    repository = update_source_directories(
+        absolute_vendor_dir, absolute_elm_package_paths, required_packages)
+    munge_names(absolute_vendor_dir, repository, required_packages)
 
 
 def test():
