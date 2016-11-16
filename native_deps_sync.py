@@ -22,19 +22,22 @@ def sync_versions(top_level_file, spec_file, quiet=False, dry=False, note_test_d
     (messages, new_deps) = elm_package.sync_deps(top_level, spec)
     spec = new_deps
 
-    if len(messages) > 0:
-        print('{number} packages changed.'.format(number=len(messages)))
-
-        if not dry:
-            with open(spec_file, 'w') as f:
-                exact_dependencies.dump(spec, f)
-        else:
-            print("No changes written.")
-
-        if not quiet:
-            print('\n'.join(messages))
-    else:
+    if len(messages) == 0:
         print('No changes needed.')
+        return
+
+    print('{number} packages changed.'.format(number=len(messages)))
+
+    if not quiet:
+        print('\n'.join(messages))
+
+    if dry:
+        print("No changes written.")
+        return
+
+    with open(spec_file, 'w') as f:
+        exact_dependencies.dump(spec, f)
+
 
 
 def main():
