@@ -5,11 +5,18 @@ from __future__ import print_function
 import argparse
 import collections
 import fnmatch
-import json
 import os
 import sys
 import tarfile
-import urllib2
+try:
+    # For Python 3.0 and later
+    from urllib.request import urlopen
+except ImportError:
+    # Fall back to Python 2's urllib2
+    from urllib2 import urlopen
+
+import elm_package
+import exact_dependencies
 
 
 def read_native_elm_package(package_file):
@@ -18,44 +25,45 @@ def read_native_elm_package(package_file):
     """
 
     with open(package_file) as f:
-        return json.load(f)
+        return exact_dependencies.load(f)
 
 
-def format_url(package):
+def format_tarball_url(package):
     """
     Creates the url to fetch the tar from github.
-    >>> format_url({'namespace': 'elm-lang', 'name': 'navigation', 'version': '2.0.0'})
+    >>> format_tarball_url({'owner': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
     'https://github.com/elm-lang/navigation/archive/2.0.0.tar.gz'
     """
-    return "https://github.com/{namespace}/{name}/archive/{version}.tar.gz".format(**package)
+    return "https://github.com/{owner}/{project}/archive/{version}.tar.gz".format(**package)
 
 
-def parse_json(raw):
+def packages_from_exact_deps(exact_dependencies):
     """
-    Parses the json and returns a list of {version, namespace, name}.
-    >>> parse_json({'elm-lang/navigation': '2.0.0'})
-    [{'version': '2.0.0', 'namespace': 'elm-lang', 'name': 'navigation'}]
+    Parses the json and returns a list of {version, owner, project}.
+    >>> packages_from_exact_deps({'elm-lang/navigation': '2.0.0'}) \
+        == [{'version': '2.0.0', 'owner': 'elm-lang', 'project': 'navigation'}]
+    True
     """
     result = []
 
-    for name, version in raw.items():
-        namespace, package_name = name.split('/')
+    for package, version in exact_dependencies.items():
+        owner, project = package.split('/')
         result.append({
-          'namespace': namespace,
-          'name': package_name,
+          'owner': owner,
+          'project': project,
           'version': version
         })
 
     return result
 
 
-def format_vendor_dir(base, namespace):
+def ensure_vendor_owner_dir(base, owner):
     """
     Creates the path in the vendor folder.
-    >>> format_vendor_dir('foo', 'bar')
+    >>> ensure_vendor_owner_dir('foo', 'bar')
     'foo/bar'
     """
-    path = os.path.join(base, namespace)
+    path = os.path.join(base, owner)
 
     try:
         os.makedirs(path)
@@ -65,15 +73,16 @@ def format_vendor_dir(base, namespace):
     return path
 
 
-def package_dir(vendor_dir, package):
+def vendor_package_dir(vendor_dir, package):
     """
-    Creates the path to the elm package.
-    >>> package_dir('vendor/assets/elm', {'version': '2.0.0', 'namespace': 'elm-lang', 'name': 'navigation'})
+    Returns the path to the elm package. Also creates the parent directory if misisng.
+    >>> vendor_package_dir('vendor/assets/elm', {'version': '2.0.0', 'owner': 'elm-lang', 'project': 'navigation'})
     'vendor/assets/elm/elm-lang/navigation-2.0.0'
     """
-    return "{vendor_dir}/{package_name}-{version}".format(
-        vendor_dir=format_vendor_dir(vendor_dir, package['namespace']),
-        package_name=package['name'],
+    vendor_owner_dir = ensure_vendor_owner_dir(vendor_dir, package['owner'])
+    return "{vendor_owner_dir}/{project}-{version}".format(
+        vendor_owner_dir=vendor_owner_dir,
+        project=package['project'],
         version=package['version']
     )
 
@@ -83,60 +92,61 @@ def fetch_packages(vendor_dir, packages):
     Fetches all packages from github.
     """
     for package in packages:
-        tar_filename = format_tar_file(vendor_dir, package)
-        vendor = format_vendor_dir(vendor_dir, package['namespace'])
-        url = format_url(package)
+        tar_filename = format_tar_path(vendor_dir, package)
+        vendor_owner_dir = ensure_vendor_owner_dir(vendor_dir, package['owner'])
+        url = format_tarball_url(package)
 
-        print("Downloading {namespace}/{name} {version}".format(**package))
-        tar_file = urllib2.urlopen(url)
+        print("Downloading {owner}/{project} {version}".format(**package))
+        tar_file = urlopen(url)
         with open(tar_filename, 'w') as tar:
             tar.write(tar_file.read())
 
         with tarfile.open(tar_filename) as tar:
-            tar.extractall(vendor, members=tar.getmembers())
+            tar.extractall(vendor_owner_dir, members=tar.getmembers())
 
     return packages
 
 
-def format_tar_file(vendor_dir, package):
+def format_tar_path(vendor_dir, package):
     """
-    The name of the tar.
-    >>> format_tar_file('vendor/assets/elm', {'namespace': 'elm-lang', 'name': 'navigation', 'version': '2.0.0'})
+    The path of the tar.
+    >>> format_tar_path('vendor/assets/elm', {'owner': 'elm-lang', 'project': 'navigation', 'version': '2.0.0'})
     'vendor/assets/elm/elm-lang/navigation-2.0.0-tar.gz'
     """
-    vendor = format_vendor_dir(vendor_dir, package['namespace'])
-    return package_dir(vendor_dir, package) + "-tar.gz"
+    ensure_vendor_owner_dir(vendor_dir, package['owner'])
+    return vendor_package_dir(vendor_dir, package) + "-tar.gz"
 
-def format_native_name(namespace, name):
+
+def format_native_name(owner, project):
     """
-    Formates the package to the namespace used in elm native.
+    Formates the package to the owner used in elm native.
     >>> format_native_name('elm-lang', 'navigation')
     '_elm_lang$navigation'
     """
 
-    underscored_namespace = namespace.replace("-", "_")
-    underscored_name = name.replace("-", "_")
-    return "_{owner}${repo}".format(owner=underscored_namespace, repo=underscored_name)
+    underscored_owner = owner.replace("-", "_")
+    underscored_project = project.replace("-", "_")
+    return "_{owner}${repo}".format(owner=underscored_owner, repo=underscored_project)
 
 
-def namespace_from_repo(repository):
+def package_name_from_repo(repository):
     """
-    Namespace and name from repository.
-    >>> namespace_from_repo('https://github.com/NoRedInk/noredink.git')
-    ['NoRedInk', 'noredink']
+    Owner and project from repository.
+    >>> package_name_from_repo('https://github.com/NoRedInk/noredink.git')
+    ('NoRedInk', 'noredink')
     """
 
     repo_without_domain = repository.split('https://github.com/')[1].split('.git')[0]
 
-    (namespace, name) = repo_without_domain.split('/')
-    return [namespace, name]
+    (owner, project) = repo_without_domain.split('/')
+    return (owner, project)
 
 
 def get_source_dirs(vendor_dir, package):
     """ get the source-directories out of an elm-package file """
-    elm_package_filename = os.path.join(package_dir(vendor_dir, package), 'elm-package.json')
+    elm_package_filename = os.path.join(vendor_package_dir(vendor_dir, package), 'elm-package.json')
     with open(elm_package_filename) as f:
-        data = json.load(f)
+        data = elm_package.load(f)
 
     return data['source-directories']
 
@@ -165,62 +175,69 @@ def munge_names(vendor_dir, repository, packages):
     """
     Replaces the namespaced function names in all native code by the namespace from the given elm-package.json.
     """
-    namespace, name = namespace_from_repo(repository)
+    owner, project = package_name_from_repo(repository)
     for package in packages:
-        native_files = find_all_native_files(package_dir(vendor_dir, package))
+        native_files = find_all_native_files(vendor_package_dir(vendor_dir, package))
         for native_file in native_files:
             replace_in_file(
                 native_file,
-                format_native_name(package['namespace'], package['name']),
-                format_native_name(namespace, name)
+                format_native_name(package['owner'], package['project']),
+                format_native_name(owner, project)
             )
 
 
-def update_elm_package(vendor_dir, configs, packages):
+def update_source_directories(vendor_dir, elm_package_paths, native_packages):
     """
-    Gets the repo name and updates the source-directories in the given elm-package.json.
+    Updates the source-directories in the given elm-package.json files.
+    Returns the repository of the last elm-package.json.
     """
 
     repository = ""
 
-    for config in configs:
-        with open(config) as f:
-            data = json.load(f, object_pairs_hook=collections.OrderedDict)
+    for elm_package_path in elm_package_paths:
+        with open(elm_package_path) as f:
+            data = elm_package.load(f)
 
         repository = data['repository']
         source_directories = data['source-directories']
-        path = '../' * config.count('/')
+        elm_package_dir = os.path.dirname(elm_package_path)
 
         needs_save = False
 
-        for package in packages:
-            current_package_dirs = get_source_dirs(vendor_dir, package)
+        for native_package in native_packages:
+            source_dirs = get_source_dirs(vendor_dir, native_package)
 
-            for dir_name in current_package_dirs:
-                relative_path = os.path.join(path, package_dir(vendor_dir, package), dir_name)
+            for source_dir in source_dirs:
+                absolute_source_dir = os.path.join(
+                    vendor_package_dir(vendor_dir, native_package), source_dir)
+                relative_path = os.path.relpath(absolute_source_dir, elm_package_dir)
 
                 if relative_path not in data['source-directories']:
                     data['source-directories'].append(relative_path)
                     needs_save = True
 
         if needs_save:
-            with open(config, 'w') as f:
-                f.write(json.dumps(data, indent=4))
+            with open(elm_package_path, 'w') as f:
+                elm_package.dump(data, f)
 
     return repository
 
 
-def filter_packages(vendor_dir, packages):
-  return [x for x in packages if not os.path.isdir(format_tar_file(vendor_dir, x))]
+def exclude_downloaded_packages(vendor_dir, packages):
+  return [x for x in packages if not os.path.isfile(format_tar_path(vendor_dir, x))]
 
 
-def main(native_elm_package, configs, vendor):
-    raw_json = read_native_elm_package(native_elm_package)
-    parsed = parse_json(raw_json)
-    packages = filter_packages(vendor, parsed)
-    fetch_packages(vendor, packages)
-    repository = update_elm_package(vendor, configs, packages)
-    munge_names(vendor, repository, packages)
+def main(native_elm_package_path, elm_package_paths, vendor_dir):
+    absolute_vendor_dir = os.path.abspath(vendor_dir)
+    absolute_elm_package_paths = list(map(os.path.abspath, elm_package_paths))
+
+    raw_json = read_native_elm_package(native_elm_package_path)
+    all_packages = packages_from_exact_deps(raw_json)
+    required_packages = exclude_downloaded_packages(absolute_vendor_dir, all_packages)
+    fetch_packages(absolute_vendor_dir, required_packages)
+    repository = update_source_directories(
+        absolute_vendor_dir, absolute_elm_package_paths, required_packages)
+    munge_names(absolute_vendor_dir, repository, required_packages)
 
 
 def test():
