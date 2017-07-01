@@ -10,10 +10,10 @@ import sys
 import tarfile
 try:
     # For Python 3.0 and later
-    from urllib.request import urlopen
+    from urllib.request import urlretrieve
 except ImportError:
     # Fall back to Python 2's urllib2
-    from urllib2 import urlopen
+    from urllib import urlretrieve
 
 import elm_package
 import exact_dependencies
@@ -97,10 +97,7 @@ def fetch_packages(vendor_dir, packages):
         url = format_tarball_url(package)
 
         print("Downloading {owner}/{project} {version}".format(**package))
-        tar_file = urlopen(url)
-        with open(tar_filename, 'w') as tar:
-            tar.write(tar_file.read())
-
+        urlretrieve(url, tar_filename)
         with tarfile.open(tar_filename) as tar:
             tar.extractall(vendor_owner_dir, members=tar.getmembers())
 
