@@ -220,8 +220,12 @@ def update_source_directories(vendor_dir, elm_package_paths, native_packages):
     return repository
 
 
-def exclude_downloaded_packages(vendor_dir, packages):
-  return [x for x in packages if not os.path.isfile(format_tar_path(vendor_dir, x))]
+def exclude_existing_packages(vendor_dir, packages):
+  return [x for x in packages if not package_exists(vendor_dir, x)]
+
+
+def package_exists(vendor_dir, package):
+    return os.path.isdir(vendor_package_dir(vendor_dir, package))
 
 
 def main(native_elm_package_path, elm_package_paths, vendor_dir):
@@ -230,7 +234,7 @@ def main(native_elm_package_path, elm_package_paths, vendor_dir):
 
     raw_json = read_native_elm_package(native_elm_package_path)
     all_packages = packages_from_exact_deps(raw_json)
-    required_packages = exclude_downloaded_packages(absolute_vendor_dir, all_packages)
+    required_packages = exclude_existing_packages(absolute_vendor_dir, all_packages)
     fetch_packages(absolute_vendor_dir, required_packages)
     repository = update_source_directories(
         absolute_vendor_dir, absolute_elm_package_paths, required_packages)
