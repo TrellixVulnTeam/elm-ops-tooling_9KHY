@@ -10,10 +10,10 @@ import sys
 import tarfile
 try:
     # For Python 3.0 and later
-    from urllib.request import urlopen
+    from urllib.request import urlretrieve
 except ImportError:
     # Fall back to Python 2's urllib2
-    from urllib2 import urlopen
+    from urllib import urlretrieve
 
 import elm_package
 import exact_dependencies
@@ -97,10 +97,7 @@ def fetch_packages(vendor_dir, packages):
         url = format_tarball_url(package)
 
         print("Downloading {owner}/{project} {version}".format(**package))
-        tar_file = urlopen(url)
-        with open(tar_filename, 'w') as tar:
-            tar.write(tar_file.read())
-
+        urlretrieve(url, tar_filename)
         with tarfile.open(tar_filename) as tar:
             tar.extractall(vendor_owner_dir, members=tar.getmembers())
 
@@ -223,8 +220,12 @@ def update_source_directories(vendor_dir, elm_package_paths, native_packages):
     return repository
 
 
-def exclude_downloaded_packages(vendor_dir, packages):
-  return [x for x in packages if not os.path.isfile(format_tar_path(vendor_dir, x))]
+def exclude_existing_packages(vendor_dir, packages):
+  return [x for x in packages if not package_exists(vendor_dir, x)]
+
+
+def package_exists(vendor_dir, package):
+    return os.path.isdir(vendor_package_dir(vendor_dir, package))
 
 
 def main(native_elm_package_path, elm_package_paths, vendor_dir):
@@ -233,7 +234,7 @@ def main(native_elm_package_path, elm_package_paths, vendor_dir):
 
     raw_json = read_native_elm_package(native_elm_package_path)
     all_packages = packages_from_exact_deps(raw_json)
-    required_packages = exclude_downloaded_packages(absolute_vendor_dir, all_packages)
+    required_packages = exclude_existing_packages(absolute_vendor_dir, all_packages)
     fetch_packages(absolute_vendor_dir, required_packages)
     repository = update_source_directories(
         absolute_vendor_dir, absolute_elm_package_paths, required_packages)
