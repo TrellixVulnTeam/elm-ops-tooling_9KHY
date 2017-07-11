@@ -41,7 +41,7 @@ def sync_deps(from_deps, to_deps):
         elif to_deps[package_name] != package_version:
             result[package_name] = package_version
 
-            messages.append('Changing {package_name} from version {package_version} to {other_package_version}'.format(
+            messages.append('Changing {package_name} from version {other_package_version} to {package_version}'.format(
                 package_version=package_version, package_name=package_name,
                 other_package_version=to_deps[package_name])
             )
