@@ -1,11 +1,12 @@
 import json
 import tarfile
 import difflib
+import shutil
 
 import native_package_install
 
 
-def test_main_does_not_download_twice(tmpdir, mocker):
+def test_main_does_not_download_twice_given_multiple_elm_packages(tmpdir, mocker):
     native_elm_package = {'elm-lang/core': '1.0.0'}
     native_elm_package_path = tmpdir.join('elm-native-package.json')
     native_elm_package_path.write(json.dumps(native_elm_package))
@@ -35,24 +36,23 @@ def test_main_does_not_download_twice(tmpdir, mocker):
 
     vendor = tmpdir.mkdir('vendor')
 
-    urlopen = mocker.patch.object(native_package_install, 'urlopen')
-    with open(str(fake_native_tarball_path)) as f:
-        urlopen.return_value = f
+    def write_tarfile(_, tar_filename):
+        shutil.copyfile(str(fake_native_tarball_path), tar_filename)
 
-        native_package_install.main(
-            str(native_elm_package_path),
-            list(map(str, (elm_package_one_path, elm_package_two_path))),
-            str(vendor))
+    mock_urlretrieve = mocker.patch.object(
+        native_package_install,
+        'urlretrieve',
+        side_effect=write_tarfile)
 
-    with open(str(fake_native_tarball_path)) as f:
-        urlopen.return_value = f
+    run_install = lambda: native_package_install.main(
+        str(native_elm_package_path),
+        list(map(str, (elm_package_one_path, elm_package_two_path))),
+        str(vendor))
 
-        native_package_install.main(
-            str(native_elm_package_path),
-            list(map(str, (elm_package_one_path, elm_package_two_path))),
-            str(vendor))
+    run_install()
+    run_install()
 
-    assert urlopen.call_count == 1
+    assert mock_urlretrieve.call_count == 1
 
 
 def test_update_source_directories_makes_minimum_changes(tmpdir):
