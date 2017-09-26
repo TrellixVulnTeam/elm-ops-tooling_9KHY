@@ -14,7 +14,7 @@ class PackageNotFound(object):
     ({candidate_name}).
 
     You can probably fix this error by adding {package_name} to the
-    dependencies in {candidate_name}.
+    dependencies in {candidate_name}.\
     ''')
 
     def __init__(self, package_name, reference_name, candidate_name):
@@ -38,8 +38,8 @@ class VersionMismatch(object):
     "{reference_version}", but the candidate package file ({candidate_name})
     has version "{candidate_version}".
 
-    You can probably fix this error by making the version bounds in
-    {candidate_name} exactly match those in {reference_name}.
+    You can probably fix this error by changing the version bounds for
+    {package_name} in {candidate_name} to "{reference_version}".\
     ''')
 
     def __init__(
@@ -105,7 +105,8 @@ def have_matching_versions(reference_file, candidate_file, is_exact=False, quiet
 
     if len(errors) > 0:
         print('BUILD FAILED due to elm-deps mismatch, errors:')
-        print('\n'.join(str(error) for error in errors))
+        print('\n---\n')
+        print('\n\n---\n\n'.join(str(error) for error in errors))
         return False
     else:
         if not quiet:
@@ -140,7 +141,7 @@ def main():
         print("WARNING: --exact is deprecated and will be removed in a future version.")
         print("compare your elm-package.json files directly!")
 
-    if not have_matching_versions(args.top_level_file, args.spec_file, quiet=args.quiet, is_exact=args.exact):
+    if not have_matching_versions(args.reference_file, args.candidate_file, quiet=args.quiet, is_exact=args.exact):
         sys.exit(1)
 
 
