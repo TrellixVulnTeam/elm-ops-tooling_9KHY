@@ -7,6 +7,18 @@ import argparse
 import textwrap
 
 
+def nice_format(tmpl, *args, **kwargs):
+    unwrapped = textwrap.dedent(tmpl).format(*args, **kwargs)
+
+    paragraphs = [
+        '\n'.join(textwrap.wrap(paragraph))
+        for paragraph
+        in unwrapped.split('\n\n')
+    ]
+
+    return '\n\n'.join(paragraphs)
+
+
 class PackageNotFound(object):
     friendly = textwrap.dedent('''\
     Package {package_name} was a dependency in the reference package file
@@ -23,7 +35,8 @@ class PackageNotFound(object):
         self.candidate_name = candidate_name
 
     def __str__(self):
-        return self.friendly.format(
+        return nice_format(
+            self.friendly,
             package_name=self.package_name,
             reference_name=self.reference_name,
             candidate_name=self.candidate_name,
@@ -54,7 +67,8 @@ class VersionMismatch(object):
         self.candidate_version = candidate_version
 
     def __str__(self):
-        return self.friendly.format(
+        return nice_format(
+            self.friendly,
             package_name=self.package_name,
             reference_name=self.reference_name,
             reference_version=self.reference_version,
