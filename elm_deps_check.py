@@ -152,8 +152,8 @@ def main():
     args = parser.parse_args()
 
     if args.exact:
-        print("WARNING: --exact is deprecated and will be removed in a future version.")
-        print("compare your elm-package.json files directly!")
+        print("WARNING: --exact is deprecated and will be removed in a future version.", file=sys.stderr)
+        print("compare your elm-package.json files directly!", file=sys.stderr)
 
     if not have_matching_versions(args.reference_file, args.candidate_file, quiet=args.quiet, is_exact=args.exact):
         sys.exit(1)
