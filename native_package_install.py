@@ -8,7 +8,12 @@ import fnmatch
 import os
 import sys
 import tarfile
-import requests
+try:
+    # For Python 3.0 and later
+    from urllib.request import urlretrieve
+except ImportError:
+    # Fall back to Python 2's urllib2
+    from urllib import urlretrieve
 
 import elm_package
 import exact_dependencies
@@ -81,13 +86,6 @@ def vendor_package_dir(vendor_dir, package):
         version=package['version']
     )
 
-
-def urlretrieve(url, filename, timeout = 60):
-    response = requests.get(url, timeout=timeout, stream=True)
-    response.raise_for_status()
-    with open(filename, "wb") as output:
-        for chunk in response.iter_content(4096):
-            output.write(chunk)
 
 def fetch_packages(vendor_dir, packages):
     """
