@@ -146,7 +146,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Check deps file for possible upgrades')
 
-    parser.add_argument('--elm-version', help='specify your current elm version', default='0.16')
+    parser.add_argument('--elm-version', help='specify your current elm version', default='0.18')
 
     parser.add_argument('local')
     args = parser.parse_args()
