@@ -68,7 +68,7 @@ Sometimes we want to figure out if our elm-package.json contains old deps.
 
 Usage:
 
-- `--elm-version` if you want to specify a different version of Elm. Defaults to 0.16
+- `--elm-version` if you want to specify a different version of Elm. Defaults to 0.18
 
 ```bash
 
